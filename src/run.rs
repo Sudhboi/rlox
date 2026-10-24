@@ -1,4 +1,4 @@
-use crate::scanner::{self, Scanner};
+use crate::scanner::Scanner;
 use std::io::{self, Write};
 use std::{fs, process};
 

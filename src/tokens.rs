@@ -3,6 +3,7 @@ use std::fmt::{Debug, Display};
 #[derive(Debug)]
 pub enum Literal {
     Integer(i32),
+    Str(String),
 }
 
 pub struct Token {
