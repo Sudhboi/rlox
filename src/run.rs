@@ -1,14 +1,20 @@
 use crate::scanner::Scanner;
+use crate::tokens::{TokenType, make_keywords_map};
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::{fs, process};
 
 pub struct Lox {
     pub had_error: bool,
+    keywords_map: HashMap<String, TokenType>,
 }
 
 impl Lox {
     fn build() -> Lox {
-        Lox { had_error: false }
+        Lox {
+            had_error: false,
+            keywords_map: make_keywords_map(),
+        }
     }
     fn run(&mut self, source: &str) {
         let mut scanner = Scanner::build(self, source);
@@ -16,6 +22,12 @@ impl Lox {
         for token in tokens {
             println!("{token}");
         }
+    }
+    pub fn get_keyword(&self, word: &[char]) -> &TokenType {
+        let val: String = word.iter().collect();
+        self.keywords_map
+            .get(&val)
+            .unwrap_or(&TokenType::Identifier)
     }
 }
 

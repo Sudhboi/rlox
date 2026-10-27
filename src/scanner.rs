@@ -37,10 +37,10 @@ impl<'a> Scanner<'_> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_literal(token_type, None);
+        self.add_token_literal(token_type, Literal::None);
     }
 
-    fn add_token_literal(&mut self, token_type: TokenType, literal: Option<Literal>) {
+    fn add_token_literal(&mut self, token_type: TokenType, literal: Literal) {
         let text = &self.source[self.start..self.current];
         self.tokens
             .push(Token::build(token_type, text, literal, self.line));
@@ -63,12 +63,67 @@ impl<'a> Scanner<'_> {
         }
     }
 
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            '\0'
+        } else {
+            self.source[self.current + 1]
+        }
+    }
+
     fn check_next(&mut self, expected: char, token: TokenType, default: TokenType) {
         if self.match_next(expected) {
             self.add_token(token);
         } else {
             self.add_token(default);
         }
+    }
+
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            self.program.error(self.line, "Unterminated String");
+        }
+
+        self.advance();
+
+        let value = &self.source[self.start + 1..self.current - 1];
+        self.add_token_literal(StringToken, Literal::Str(value.iter().collect()));
+    }
+
+    fn number(&mut self) {
+        while self.peek().is_ascii_digit() {
+            self.advance();
+        }
+
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
+            self.advance();
+            while self.peek().is_ascii_digit() {
+                self.advance();
+            }
+        }
+
+        let value = &self.source[self.start..self.current];
+        let num: String = value.iter().collect();
+        println!("{num}");
+        self.add_token_literal(Number, Literal::Float(num.parse::<f64>().unwrap()));
+    }
+
+    fn identifier(&mut self) {
+        while self.peek().is_alphanumeric() || self.peek() == '_' {
+            self.advance();
+        }
+
+        let value = &self.source[self.start..self.current];
+        let token_type = self.program.get_keyword(value);
+
+        self.add_token(*token_type);
     }
 
     fn scan_token(&mut self) {
@@ -106,7 +161,17 @@ impl<'a> Scanner<'_> {
                 self.line += 1;
             }
 
-            _ => self.program.error(self.line, "Unexpected Character"),
+            '"' => self.string(),
+
+            _ => {
+                if c.is_ascii_digit() {
+                    self.number();
+                } else if c.is_alphabetic() || c == '_' {
+                    self.identifier();
+                } else {
+                    self.program.error(self.line, "Unexpected Character");
+                }
+            }
         }
     }
 
